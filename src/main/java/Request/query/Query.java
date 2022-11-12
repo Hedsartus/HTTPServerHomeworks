@@ -19,4 +19,6 @@ public interface Query {
     List<NameValuePair> getParams(Method method);
 
     List<NameValuePair> getParam(Method method, String name);
+
+    void addToParams(Method method, String name, String value);
 }

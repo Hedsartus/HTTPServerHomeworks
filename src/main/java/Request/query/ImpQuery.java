@@ -2,6 +2,7 @@ package Request.query;
 
 import Common.Method;
 import org.apache.hc.core5.http.NameValuePair;
+import org.apache.hc.core5.http.message.BasicNameValuePair;
 import org.apache.hc.core5.net.URLEncodedUtils;
 
 import java.net.URI;
@@ -49,7 +50,7 @@ public class ImpQuery implements Query {
 
         if (method.equals(Method.POST)) {
             this.postParameters = URLEncodedUtils.parse(query, StandardCharsets.UTF_8);
-            System.out.println("POST: " + getParams(Method.POST));
+            //System.out.println("POST: " + getParams(Method.POST));
         }
     }
 
@@ -83,5 +84,23 @@ public class ImpQuery implements Query {
         }
         return list.stream()
                 .filter(x -> Objects.equals(x.getName(), name)).collect(Collectors.toList());
+    }
+
+    @Override
+    public void addToParams(Method method, String name, String value) {
+        if (Method.POST == method) {
+            if(this.postParameters == null) {
+                this.postParameters = new ArrayList<>();
+            }
+
+            this.postParameters.add(new BasicNameValuePair(name, value));
+
+        } else {
+            if(this.getParameters == null) {
+                this.getParameters = new ArrayList<>();
+            }
+
+            this.getParameters.add(new BasicNameValuePair(name, value));
+        }
     }
 }

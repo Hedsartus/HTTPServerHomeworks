@@ -2,22 +2,30 @@ package Request;
 
 import Common.Config;
 import Common.Method;
-import Path.Path;
 import Path.ImpPath;
+import Path.Path;
 import Request.query.ImpQuery;
+import org.apache.commons.fileupload.FileItem;
+import org.apache.commons.fileupload.disk.DiskFileItemFactory;
+import org.apache.commons.fileupload.servlet.ServletFileUpload;
 
 import java.io.BufferedInputStream;
+import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 
-public class ImpRequest implements Request {
+public class ImpRequest extends BaseRequest implements Request {
     private final ImpQuery query = new ImpQuery();
     private BufferedInputStream inputStream;
     private StatusRequest status = StatusRequest.OK;
     private List<String> headers;
     private final Path pathContent = new ImpPath();
+
 
     public ImpRequest(BufferedInputStream inputStream) {
         this.inputStream = inputStream;
@@ -104,19 +112,43 @@ public class ImpRequest implements Request {
         try {
             this.inputStream.skip(Config.REQUEST_LINE_DELIMITER.length);
             // вычитываем Content-Length, чтобы прочитать body
-            final var contentTypeHeader = extractHeader(headers, "Content-Type");
-            if (contentTypeHeader.isPresent() && contentTypeHeader.get().equals("application/x-www-form-urlencoded")) {
-                final var contentLength = extractHeader(headers, "Content-Length");
-                if (contentLength.isPresent()) {
-                    final var bodyBytes = this.inputStream.readNBytes(Integer.parseInt(contentLength.get()));
-                    var body = new String(bodyBytes);
-                    this.query.parse(body, Method.POST);
-                    System.out.println("PARAM = value: " + this.query.getParam(Method.POST, "value"));
+            var contentTypeHeader = extractHeader(headers, "Content-Type");
+
+            final var contentLength = extractHeader(headers, "Content-Length");
+            DiskFileItemFactory factory = new DiskFileItemFactory();
+            factory.setSizeThreshold(100);
+            factory.setRepository(new File("temp"));
+
+            ServletFileUpload upload = new ServletFileUpload(factory);
+
+            List<FileItem> items = upload.parseRequest(this);
+            Iterator<FileItem> iter = items.iterator();
+            while (iter.hasNext()) {
+                FileItem item = iter.next();
+
+                if (item.isFormField()) {
+                    this.query.addToParams(Method.POST, item.getFieldName(), item.getString());
+                } else {
+                    processUploadedFile(item);
                 }
             }
-        } catch (IOException e) {
+
+            System.out.println("Параметры : " + this.query.getParams(Method.POST));
+        } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private void processUploadedFile(FileItem item) throws Exception {
+        String fieldName = item.getFieldName();
+        String fileName = item.getName();
+        int i2 = fileName.lastIndexOf("\\");
+        if (i2 > -1) fileName = fileName.substring(i2 + 1);
+        File dirs = new File("downld");
+
+        File uploadedFile = new File(dirs, fileName);
+        item.write(uploadedFile);
+        System.out.println("Файл " + fileName + " успешно загружен в папку downld!");
     }
 
     // ищем заголовки
@@ -133,7 +165,6 @@ public class ImpRequest implements Request {
 
             final var headersBytes = this.inputStream.readNBytes(headersEnd - headersStart);
             this.headers = Arrays.asList(new String(headersBytes).split("\r\n"));
-            //System.out.println("headers: "+headers);
         }
     }
 
@@ -158,5 +189,26 @@ public class ImpRequest implements Request {
     @Override
     public ImpQuery getQuery() {
         return this.query;
+    }
+
+    @Override
+    public String getCharacterEncoding() {
+        return StandardCharsets.UTF_8.toString();
+    }
+
+    @Override
+    public String getContentType() {
+        return extractHeader(headers, "Content-Type").get();
+    }
+
+    @Override
+    public int getContentLength() {
+        final var contentLength = extractHeader(headers, "Content-Length");
+        return Integer.parseInt(contentLength.get());
+    }
+
+    @Override
+    public InputStream getInputStream() throws IOException {
+        return this.inputStream;
     }
 }
