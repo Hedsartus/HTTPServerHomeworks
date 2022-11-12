@@ -1,5 +1,6 @@
 package Request.query;
 
+import Common.Method;
 import org.apache.hc.core5.http.NameValuePair;
 
 import java.util.List;
@@ -13,11 +14,9 @@ public interface Query {
 
     String getPath();
 
-    void parseQueryParams(String params);
+    void parse(String query, Method method);
 
-    void parseGetQuery(String sUrl);
+    List<NameValuePair> getParams(Method method);
 
-    List<NameValuePair> getQueryParams();
-
-    String getQueryParam(String name);
+    List<NameValuePair> getParam(Method method, String name);
 }

@@ -10,7 +10,7 @@ public class Main {
         // добавление handler'ов (обработчиков)
         server.addHandler("GET", "/messages", (request, responseStream) -> {
             request.setStatus(StatusRequest.OK);
-            request.getQuery().setPath("index.html");
+            request.getQuery().setPath("default-get.html");
             Response response = new ImpResponse(responseStream, request);
             response.sendResponse();
         });

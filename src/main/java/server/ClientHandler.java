@@ -41,7 +41,7 @@ public class ClientHandler implements Runnable {
 
     private void controller(Request request, BufferedOutputStream out) throws IOException {
         Response response = new ImpResponse(out, request);
-        if (this.handlers.containsKey(request.getQuery().getMethod())) {
+        if (request.getQuery().getMethod() != null && this.handlers.containsKey(request.getQuery().getMethod())) {
             Map<String, Handler> handlerMap = this.handlers.get(request.getQuery().getMethod());
             if (handlerMap.containsKey(request.getQuery().getPath())) {
                 Handler handler = handlerMap.get(request.getQuery().getPath());

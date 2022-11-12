@@ -76,7 +76,7 @@ public class ImpRequest implements Request {
                 this.status = StatusRequest.BADREQUEST;
             } else {
                 if (path.contains("?")) {
-                    this.query.parseGetQuery(path);
+                    this.query.parse(path, Method.GET);
                 } else {
                     this.query.setPath(path);
                 }
@@ -104,13 +104,15 @@ public class ImpRequest implements Request {
         try {
             this.inputStream.skip(Config.REQUEST_LINE_DELIMITER.length);
             // вычитываем Content-Length, чтобы прочитать body
-            final var contentLength = extractHeader(headers);
-            if (contentLength.isPresent()) {
-                final var length = Integer.parseInt(contentLength.get());
-                final var bodyBytes = this.inputStream.readNBytes(length);
-                var body = new String(bodyBytes);
-                this.query.parseQueryParams(body);
-                System.out.println("POST: " + this.query.getQueryParams());
+            final var contentTypeHeader = extractHeader(headers, "Content-Type");
+            if (contentTypeHeader.isPresent() && contentTypeHeader.get().equals("application/x-www-form-urlencoded")) {
+                final var contentLength = extractHeader(headers, "Content-Length");
+                if (contentLength.isPresent()) {
+                    final var bodyBytes = this.inputStream.readNBytes(Integer.parseInt(contentLength.get()));
+                    var body = new String(bodyBytes);
+                    this.query.parse(body, Method.POST);
+                    System.out.println("PARAM = value: " + this.query.getParam(Method.POST, "value"));
+                }
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -135,9 +137,9 @@ public class ImpRequest implements Request {
         }
     }
 
-    private static Optional<String> extractHeader(List<String> headers) {
+    private static Optional<String> extractHeader(List<String> headers, String header) {
         return headers.stream()
-                .filter(o -> o.startsWith("Content-Length"))
+                .filter(o -> o.startsWith(header))
                 .map(o -> o.substring(o.indexOf(" ")))
                 .map(String::trim)
                 .findFirst();
